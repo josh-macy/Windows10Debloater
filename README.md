@@ -1,7 +1,7 @@
 # Windows10Debloater
 Script/Utility/Application to debloat Windows 10
 
-# How To Run the Windows10Debloater.ps1 and the Windows10DebloaterGUI.ps1 files
+# How To Run the Windows10Debloater.ps1 script
 
 1) Open PowerShell as admin and enable PowerShell script execution
 <code>Set-ExecutionPolicy Unrestricted -Force</code>
