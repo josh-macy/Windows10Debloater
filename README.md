@@ -7,7 +7,7 @@ Script/Utility/Application to debloat Windows 10
 <code>Set-ExecutionPolicy Unrestricted -Force</code>
 2) On the prompt, change to the directory where you extracted the files:
   e.g. - cd c:\temp
-3) .\Windows10DebloaterGUI.ps1
+3) .\Windows10Debloater.ps1
 
 # Quick download link
 
