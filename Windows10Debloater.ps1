@@ -50,81 +50,6 @@ Function DebloatAll {
     Get-AppxProvisionedPackage -Online | Where-Object {$_.PackageName -NotMatch $WhitelistedApps -and $_.PackageName -NotMatch $NonRemovable} | Remove-AppxProvisionedPackage -Online
 }
 
-Function DebloatBlacklist {
-
-    $Bloatware = @(
-
-        #Unnecessary Windows 10 AppX Apps
-        "Microsoft.BingNews"
-        "Microsoft.GetHelp"
-        "Microsoft.Getstarted"
-        "Microsoft.Messaging"
-        "Microsoft.Microsoft3DViewer"
-        "Microsoft.MicrosoftOfficeHub"
-        "Microsoft.MicrosoftSolitaireCollection"
-        "Microsoft.NetworkSpeedTest"
-        "Microsoft.News"
-        "Microsoft.Office.Lens"
-        "Microsoft.Office.OneNote"
-        "Microsoft.Office.Sway"
-        "Microsoft.OneConnect"
-        "Microsoft.People"
-        "Microsoft.Print3D"
-        "Microsoft.RemoteDesktop"
-        "Microsoft.SkypeApp"
-        "Microsoft.StorePurchaseApp"
-        "Microsoft.Office.Todo.List"
-        "Microsoft.Whiteboard"
-        "Microsoft.WindowsAlarms"
-        #"Microsoft.WindowsCamera"
-        "microsoft.windowscommunicationsapps"
-        "Microsoft.WindowsFeedbackHub"
-        "Microsoft.WindowsMaps"
-        "Microsoft.WindowsSoundRecorder"
-        "Microsoft.Xbox.TCUI"
-        "Microsoft.XboxApp"
-        "Microsoft.XboxGameOverlay"
-        "Microsoft.XboxIdentityProvider"
-        "Microsoft.XboxSpeechToTextOverlay"
-        "Microsoft.ZuneMusic"
-        "Microsoft.ZuneVideo"
-
-        #Sponsored Windows 10 AppX Apps
-        #Add sponsored/featured apps to remove in the "*AppName*" format
-        "*EclipseManager*"
-        "*ActiproSoftwareLLC*"
-        "*AdobeSystemsIncorporated.AdobePhotoshopExpress*"
-        "*Duolingo-LearnLanguagesforFree*"
-        "*PandoraMediaInc*"
-        "*CandyCrush*"
-        "*Wunderlist*"
-        "*Flipboard*"
-        "*Twitter*"
-        "*Facebook*"
-        "*Spotify*"
-        "*Minecraft*"
-        "*Royal Revolt*"
-        "*Sway*"
-        "*Speed Test*"
-        "*Dolby*"
-             
-        #Optional: Typically not removed but you can if you need to for some reason
-        #"*Microsoft.Advertising.Xaml_10.1712.5.0_x64__8wekyb3d8bbwe*"
-        #"*Microsoft.Advertising.Xaml_10.1712.5.0_x86__8wekyb3d8bbwe*"
-        #"*Microsoft.BingWeather*"
-        #"*Microsoft.MSPaint*"
-        #"*Microsoft.MicrosoftStickyNotes*"
-        #"*Microsoft.Windows.Photos*"
-        #"*Microsoft.WindowsCalculator*"
-        #"*Microsoft.WindowsStore*"
-    )
-    foreach ($Bloat in $Bloatware) {
-        Get-AppxPackage -Name $Bloat| Remove-AppxPackage
-        Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $Bloat | Remove-AppxProvisionedPackage -Online
-        Write-Output "Trying to remove $Bloat."
-    }
-}
-
 Function Remove-Keys {
         
     #These are the registry keys that it will delete.
@@ -168,7 +93,6 @@ Function Remove-Keys {
         Remove-Item $Key -Recurse
     }
 }
-            
 Function Protect-Privacy {
             
     #Disables Windows Feedback Experience
@@ -330,26 +254,6 @@ Function DisableCortana {
     Set-ItemProperty $Cortana3 HarvestContacts -Value 0
     
 }
-
-Function EnableCortana {
-    Write-Host "Re-enabling Cortana"
-    $Cortana1 = "HKCU:\SOFTWARE\Microsoft\Personalization\Settings"
-    $Cortana2 = "HKCU:\SOFTWARE\Microsoft\InputPersonalization"
-    $Cortana3 = "HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore"
-    If (!(Test-Path $Cortana1)) {
-        New-Item $Cortana1
-    }
-    Set-ItemProperty $Cortana1 AcceptedPrivacyPolicy -Value 1 
-    If (!(Test-Path $Cortana2)) {
-        New-Item $Cortana2
-    }
-    Set-ItemProperty $Cortana2 RestrictImplicitTextCollection -Value 0 
-    Set-ItemProperty $Cortana2 RestrictImplicitInkCollection -Value 0 
-    If (!(Test-Path $Cortana3)) {
-        New-Item $Cortana3
-    }
-    Set-ItemProperty $Cortana3 HarvestContacts -Value 1 
-}
         
 Function Stop-EdgePDF {
     
@@ -384,106 +288,6 @@ Function Stop-EdgePDF {
     }
 }
 
-Function Revert-Changes {   
-        
-    #This function will revert the changes you made when running the Start-Debloat function.
-        
-    #This line reinstalls all of the bloatware that was removed
-    Get-AppxPackage -AllUsers | ForEach {Add-AppxPackage -Verbose -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"} 
-    
-    #Tells Windows to enable your advertising information.    
-    Write-Output "Re-enabling key to show advertisement information"
-    $Advertising = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo"
-    If (Test-Path $Advertising) {
-        Set-ItemProperty $Advertising  Enabled -Value 1
-    }
-            
-    #Enables Cortana to be used as part of your Windows Search Function
-    Write-Output "Re-enabling Cortana to be used in your Windows Search"
-    $Search = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search"
-    If (Test-Path $Search) {
-        Set-ItemProperty $Search  AllowCortana -Value 1 
-    }
-            
-    #Re-enables the Windows Feedback Experience for sending anonymous data
-    Write-Output "Re-enabling Windows Feedback Experience"
-    $Period = "HKCU:\Software\Microsoft\Siuf\Rules"
-    If (!(Test-Path $Period)) { 
-        New-Item $Period
-    }
-    Set-ItemProperty $Period PeriodInNanoSeconds -Value 1 
-    
-    #Enables bloatware applications               
-    Write-Output "Adding Registry key to allow bloatware apps to return"
-    $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent"
-    If (!(Test-Path $registryPath)) {
-        New-Item $registryPath 
-    }
-    Set-ItemProperty $registryPath  DisableWindowsConsumerFeatures -Value 0 
-        
-    #Changes Mixed Reality Portal Key 'FirstRunSucceeded' to 1
-    Write-Output "Setting Mixed Reality Portal value to 1"
-    $Holo = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Holographic"
-    If (Test-Path $Holo) {
-        Set-ItemProperty $Holo  FirstRunSucceeded -Value 1 
-    }
-        
-    #Re-enables live tiles
-    Write-Output "Enabling live tiles"
-    $Live = "HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications"
-    If (!(Test-Path $Live)) {
-        New-Item $Live 
-    }
-    Set-ItemProperty $Live  NoTileApplicationNotification -Value 0 
-       
-    #Re-enables data collection
-    Write-Output "Re-enabling data collection"
-    $DataCollection = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection"
-    If (!(Test-Path $DataCollection)) {
-        New-Item $DataCollection
-    }
-    Set-ItemProperty $DataCollection  AllowTelemetry -Value 1
-        
-    #Re-enables People Icon on Taskbar
-    Write-Output "Enabling People icon on Taskbar"
-    $People = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People"
-    If (!(Test-Path $People)) {
-        New-Item $People 
-    }
-    Set-ItemProperty $People  PeopleBand -Value 1 
-    
-    #Re-enables suggestions on start menu
-    Write-Output "Enabling suggestions on the Start Menu"
-    $Suggestions = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
-    If (!(Test-Path $Suggestions)) {
-        New-Item $Suggestions
-    }
-    Set-ItemProperty $Suggestions  SystemPaneSuggestionsEnabled -Value 1 
-        
-    #Re-enables scheduled tasks that were disabled when running the Debloat switch
-    Write-Output "Enabling scheduled tasks that were disabled"
-    Get-ScheduledTask XblGameSaveTaskLogon | Enable-ScheduledTask 
-    Get-ScheduledTask  XblGameSaveTask | Enable-ScheduledTask 
-    Get-ScheduledTask  Consolidator | Enable-ScheduledTask 
-    Get-ScheduledTask  UsbCeip | Enable-ScheduledTask 
-    Get-ScheduledTask  DmClient | Enable-ScheduledTask 
-    Get-ScheduledTask  DmClientOnScenarioDownload | Enable-ScheduledTask 
-
-    Write-Output "Re-enabling and starting WAP Push Service"
-    #Enable and start WAP Push Service
-    Set-Service "dmwappushservice" -StartupType Automatic
-    Start-Service "dmwappushservice"
-    
-    Write-Output "Re-enabling and starting the Diagnostics Tracking Service"
-    #Enabling the Diagnostics Tracking Service
-    Set-Service "DiagTrack" -StartupType Automatic
-    Start-Service "DiagTrack"
-    
-    Write-Output "Restoring 3D Objects in the 'My Computer' submenu in explorer"
-    #Restoring 3D Objects in the 'My Computer' submenu in explorer
-    Restore3dObjects
-}
-
 Function CheckDMWService {
 
     Param([switch]$Debloat)
@@ -495,38 +299,6 @@ Function CheckDMWService {
     If (Get-Service -Name dmwappushservice | Where-Object {$_.Status -eq "Stopped"}) {
         Start-Service -Name dmwappushservice
     } 
-}
-    
-Function Enable-EdgePDF {
-    Write-Output "Setting Edge back to default"
-    $NoPDF = "HKCR:\.pdf"
-    $NoProgids = "HKCR:\.pdf\OpenWithProgids"
-    $NoWithList = "HKCR:\.pdf\OpenWithList"
-    #Sets edge back to default
-    If (Get-ItemProperty $NoPDF  NoOpenWith) {
-        Remove-ItemProperty $NoPDF  NoOpenWith
-    } 
-    If (Get-ItemProperty $NoPDF  NoStaticDefaultVerb) {
-        Remove-ItemProperty $NoPDF  NoStaticDefaultVerb 
-    }       
-    If (Get-ItemProperty $NoProgids  NoOpenWith) {
-        Remove-ItemProperty $NoProgids  NoOpenWith 
-    }        
-    If (Get-ItemProperty $NoProgids  NoStaticDefaultVerb) {
-        Remove-ItemProperty $NoProgids  NoStaticDefaultVerb 
-    }        
-    If (Get-ItemProperty $NoWithList  NoOpenWith) {
-        Remove-ItemProperty $NoWithList  NoOpenWith
-    }    
-    If (Get-ItemProperty $NoWithList  NoStaticDefaultVerb) {
-        Remove-ItemProperty $NoWithList  NoStaticDefaultVerb
-    }
-        
-    #Removes an underscore '_' from the Registry key for Edge
-    $Edge2 = "HKCR:\AppXd4nrz8ff68srnhf9t5a8sbjyar1cr723_"
-    If (Test-Path $Edge2) {
-        Set-Item $Edge2 AppXd4nrz8ff68srnhf9t5a8sbjyar1cr723
-    }
 }
 
 Function FixWhitelistedApps {
@@ -666,7 +438,6 @@ Function UninstallOneDrive {
 }
 
 Function UnpinStart {
-    #https://superuser.com/questions/1068382/how-to-remove-all-the-tiles-in-the-windows-10-start-menu
     #Unpins all tiles from the Start Menu
     Write-Host "Unpinning all tiles from the start menu"
     (New-Object -Com Shell.Application).
@@ -690,225 +461,65 @@ Function Remove3dObjects {
     }
 }
 
-Function Restore3dObjects {
-    #Restores 3D Objects from the 'My Computer' submenu in explorer
-    Write-Host "Restoring 3D Objects from explorer 'My Computer' submenu"
-    $Objects32 = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
-    $Objects64 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
-    If (!(Test-Path $Objects32)) {
-        New-Item $Objects32
-    }
-    If (!(Test-Path $Objects64)) {
-        New-Item $Objects64
-    }
-}
 
-#Interactive prompt Debloat/Revert options
-$Button = [Windows.MessageBoxButton]::YesNoCancel
-$ErrorIco = [Windows.MessageBoxImage]::Error
-$Warn = [Windows.MessageBoxImage]::Warning
-$Ask = 'The following will allow you to either Debloat Windows 10 or to revert changes made after Debloating Windows 10.
-
-        Select "Yes" to Debloat Windows 10
-
-        Select "No" to Revert changes made by this script
-        
-        Select "Cancel" to stop the script.'
-
-$EverythingorSpecific = "Would you like to remove everything that was preinstalled on your Windows Machine? Select Yes to remove everything, or select No to remove apps via a blacklist."
-$EdgePdf = "Do you want to stop edge from taking over as the default PDF viewer?"
-$EdgePdf2 = "Do you want to revert changes that disabled Edge as the default PDF viewer?"
-$Reboot = "For some of the changes to properly take effect it is recommended to reboot your machine. Would you like to restart?"
-$OneDriveDelete = "Do you want to uninstall One Drive?"
-$Unpin = "Do you want to unpin all items from the Start menu?"
-$InstallNET = "Do you want to install .NET 3.5?"
-$Prompt1 = [Windows.MessageBox]::Show($Ask, "Debloat or Revert", $Button, $ErrorIco) 
-Switch ($Prompt1) {
-    #This will debloat Windows 10
-    Yes {
-        #Everything is specific prompt
-        $Prompt2 = [Windows.MessageBox]::Show($EverythingorSpecific, "Everything or Specific", $Button, $Warn)
-        switch ($Prompt2) {
-            Yes { 
-                #Creates a "drive" to access the HKCR (HKEY_CLASSES_ROOT)
-                Write-Host "Creating PSDrive 'HKCR' (HKEY_CLASSES_ROOT). This will be used for the duration of the script as it is necessary for the removal and modification of specific registry keys."
-                New-PSDrive  HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-                Start-Sleep 1
-                Write-Host "Uninstalling bloatware, please wait."
-                DebloatAll
-                Write-Host "Bloatware removed."
-                Start-Sleep 1
-                Write-Host "Removing specific registry keys."
-                Remove-Keys
-                Write-Host "Leftover bloatware registry keys removed."
-                Start-Sleep 1
-                Write-Host "Checking to see if any Whitelisted Apps were removed, and if so re-adding them."
-                Start-Sleep 1
-                FixWhitelistedApps
-                Start-Sleep 1
-                Write-Host "Disabling Cortana from search, disabling feedback to Microsoft, and disabling scheduled tasks that are considered to be telemetry or unnecessary."
-                Protect-Privacy
-                Start-Sleep 1
-                DisableCortana
-                Write-Host "Cortana disabled and removed from search, feedback to Microsoft has been disabled, and scheduled tasks are disabled."
-                Start-Sleep 1
-                Write-Host "Stopping and disabling Diagnostics Tracking Service"
-                DisableDiagTrack
-                Write-Host "Diagnostics Tracking Service disabled"
-                Start-Sleep 1
-                Write-Host "Disabling WAP push service"
-                DisableWAPPush
-                Start-Sleep 1
-                Write-Host "Re-enabling DMWAppushservice if it was disabled"
-                CheckDMWService
-                Start-Sleep 1
-                Write-Host "Removing 3D Objects from the 'My Computer' submenu in explorer"
-                Remove3dObjects
-                Start-Sleep 1
-            }
-            No {
-                #Creates a "drive" to access the HKCR (HKEY_CLASSES_ROOT)
-                Write-Host "Creating PSDrive 'HKCR' (HKEY_CLASSES_ROOT). This will be used for the duration of the script as it is necessary for the removal and modification of specific registry keys."
-                New-PSDrive  HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-                Start-Sleep 1
-                Write-Host "Uninstalling bloatware, please wait."
-                DebloatBlacklist
-                Write-Host "Bloatware removed."
-                Start-Sleep 1
-                Write-Host "Removing specific registry keys."
-                Remove-Keys
-                Write-Host "Leftover bloatware registry keys removed."
-                Start-Sleep 1
-                Write-Host "Checking to see if any Whitelisted Apps were removed, and if so re-adding them."
-                Start-Sleep 1
-                FixWhitelistedApps
-                Start-Sleep 1
-                Write-Host "Disabling Cortana from search, disabling feedback to Microsoft, and disabling scheduled tasks that are considered to be telemetry or unnecessary."
-                Protect-Privacy
-                Start-Sleep 1
-                DisableCortana
-                Write-Host "Cortana disabled and removed from search, feedback to Microsoft has been disabled, and scheduled tasks are disabled."
-                Start-Sleep 1
-                Write-Host "Stopping and disabling Diagnostics Tracking Service"
-                DisableDiagTrack
-                Write-Host "Diagnostics Tracking Service disabled"
-                Start-Sleep 1
-                Write-Host "Disabling WAP push service"
-                Start-Sleep 1
-                DisableWAPPush
-                Write-Host "Re-enabling DMWAppushservice if it was disabled"
-                CheckDMWService
-                Start-Sleep 1
-            }
-        }
-        #Disabling EdgePDF prompt
-        $Prompt3 = [Windows.MessageBox]::Show($EdgePdf, "Edge PDF", $Button, $Warn)
-        Switch ($Prompt3) {
-            Yes {
-                Stop-EdgePDF
-                Write-Host "Edge will no longer take over as the default PDF viewer."
-            }
-            No {
-                Write-Host "You chose not to stop Edge from taking over as the default PDF viewer."
-            }
-        }
-        #Prompt asking to delete OneDrive
-        $Prompt4 = [Windows.MessageBox]::Show($OneDriveDelete, "Delete OneDrive", $Button, $ErrorIco) 
-        Switch ($Prompt4) {
-            Yes {
-                UninstallOneDrive
-                Write-Host "OneDrive is now removed from the computer."
-            }
-            No {
-                Write-Host "You have chosen to skip removing OneDrive from your machine."
-            }
-        }
-        #Prompt asking if you'd like to unpin all start items
-        $Prompt5 = [Windows.MessageBox]::Show($Unpin, "Unpin", $Button, $ErrorIco) 
-        Switch ($Prompt5) {
-            Yes {
-                UnpinStart
-                Write-Host "Start Apps unpined."
-            }
-            No {
-                Write-Host "Apps will remain pinned to the start menu."
-
-            }
-        }
-        #Prompt asking if you want to install .NET
-        $Prompt6 = [Windows.MessageBox]::Show($InstallNET, "Install .Net", $Button, $Warn)
-        Switch ($Prompt6) {
-            Yes {
-                Write-Host "Initializing the installation of .NET 3.5..."
-                DISM /Online /Enable-Feature /FeatureName:NetFx3 /All
-                Write-Host ".NET 3.5 has been successfully installed!"
-            }
-            No {
-                Write-Host "Skipping .NET install."
-            }
-        }
-        #Prompt asking if you'd like to reboot your machine
-        $Prompt7 = [Windows.MessageBox]::Show($Reboot, "Reboot", $Button, $Warn)
-        Switch ($Prompt7) {
-            Yes {
-                Write-Host "Unloading the HKCR drive..."
-                Remove-PSDrive HKCR 
-                Start-Sleep 1
-                Write-Host "Initiating reboot."
-                Stop-Transcript
-                Start-Sleep 2
-                Restart-Computer
-            }
-            No {
-                Write-Host "Unloading the HKCR drive..."
-                Remove-PSDrive HKCR 
-                Start-Sleep 1
-                Write-Host "Script has finished. Exiting."
-                Stop-Transcript
-                Start-Sleep 2
-                Exit
-            }
-        }
-    }
-    No {
-        Write-Host "Reverting changes..."
-        Write-Host "Creating PSDrive 'HKCR' (HKEY_CLASSES_ROOT). This will be used for the duration of the script as it is necessary for the modification of specific registry keys."
-        New-PSDrive  HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
-        Revert-Changes
-        #Prompt asking to revert edge changes as well
-        $Prompt6 = [Windows.MessageBox]::Show($EdgePdf2, "Revert Edge", $Button, $ErrorIco)
-        Switch ($Prompt6) {
-            Yes {
-                Enable-EdgePDF
-                Write-Host "Edge will no longer be disabled from being used as the default Edge PDF viewer."
-            }
-            No {
-                Write-Host "You have chosen to keep the setting that disallows Edge to be the default PDF viewer."
-            }
-        }
-        #Prompt asking if you'd like to reboot your machine
-        $Prompt7 = [Windows.MessageBox]::Show($Reboot, "Reboot", $Button, $Warn)
-        Switch ($Prompt7) {
-            Yes {
-                Write-Host "Unloading the HKCR drive..."
-                Remove-PSDrive HKCR 
-                Start-Sleep 1
-                Write-Host "Initiating reboot."
-                Stop-Transcript
-                Start-Sleep 2
-                Restart-Computer
-            }
-            No {
-                Write-Host "Unloading the HKCR drive..."
-                Remove-PSDrive HKCR 
-                Start-Sleep 1
-                Write-Host "Script has finished. Exiting."
-                Stop-Transcript
-                Start-Sleep 2
-                Exit
-            }
-        }
-    }
-}
-
-
+#Run all necessary functions
+Write-Output "Initiating Windows 10 Debloater silently."
+Write-Host "Creating PSDrive 'HKCR' (HKEY_CLASSES_ROOT). This will be used for the duration of the script as it is necessary for the removal and modification of specific registry keys."
+New-PSDrive HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
+Start-Sleep 1
+Write-Host "Uninstalling bloatware.."
+DebloatAll
+Write-Host "Bloatware removed."
+Start-Sleep 1
+Write-Host "Removing specified registry keys."
+Remove-Keys
+Write-Host "Leftover bloatware registry keys removed."
+Start-Sleep 1
+Write-Host "Checking if Whitelisted apps were removed, and if so re-adding them"
+Start-Sleep 1
+FixWhitelistedApps
+Start-Sleep 1
+Write-Host "Disabling Cortana from search, disabling feedback to Microsoft, and disabling scheduled tasks that are considered to be telemetry or unnecessary."
+Protect-Privacy
+Start-Sleep 1
+DisableCortana
+Write-Host "Cortana disabled and removed from search, feedback to Microsoft has been disabled, and scheduled tasks are disabled."
+Start-Sleep 1
+Write-Host "Stopping and disabling Diagnostics Tracking Service"
+DisableDiagTrack
+Write-Host "Diagnostics Tracking Service disabled"
+Start-Sleep 1
+Write-Host "Disabling WAP push service"
+DisableWAPPush
+Start-Sleep 1
+Write-Host "Re-enabling DMWAppushservice if it was disabled"
+CheckDMWService
+Start-Sleep 1
+Write-Host "Removing 3D Objects from the 'My Computer' submenu in explorer"
+Remove3dObjects
+Start-Sleep 1
+Write-Host "Stopping Edge from taking over as the default PDF viewer"
+Stop-EdgePDF
+Start-Sleep 1
+Write-Host "Uninstalling and Deleting OneDrive"
+UninstallOneDrive
+Write-Host "OneDrive is now removed from your computer."
+Start-Sleep 1
+Write-Host "Unpinning all Start items"
+UnpinStart
+Write-Host "All Start Apps have been unpinned"
+Start-Sleep 1
+Write-Host "Installing .NET 3.5"
+DISM /Online /Enable-Feature /FeatureName:NetFx3 /All
+Write-Host ".NET 3.5 has been successfully installed!"
+Start-Sleep 1
+Write-Host "All Done. Cleaning up and rebooting your machine."
+Write-Host "Unloading the HKCR drive..."
+Remove-PSDrive HKCR 
+Start-Sleep 1
+Write-Host "Don't forget to set your PowerShell Execution Policy back to your intended setting after the reboot!"
+Start-Sleep 3
+Write-Host "Initiating reboot..."
+Stop-Transcript
+Start-Sleep 5
+Restart-Computer
